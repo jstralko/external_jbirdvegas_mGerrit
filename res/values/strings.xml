@@ -183,4 +183,11 @@
     <string name="loading_changes">Loading More Changes&#8230;</string>
 
     <string name="header_date_format">EEEE, MMMM dd yyyy</string>
+
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="set_username_password_title">Set Username and Password</string>
+    <string name="set_username_password_set">Set</string>
+    <string name="set_username_password_cancel">Cancel</string>
 </resources>

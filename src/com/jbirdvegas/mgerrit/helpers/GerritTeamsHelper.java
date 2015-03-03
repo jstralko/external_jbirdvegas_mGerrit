@@ -18,6 +18,7 @@ package com.jbirdvegas.mgerrit.helpers;
  */
 
 import android.os.Environment;
+import android.util.Base64;
 import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -38,9 +39,11 @@ public class GerritTeamsHelper {
     private static final String KEY_TEAM_NAME = "team_name";
     private static final String KEY_TEAM_URL = "team_url";
     private static final String KEY_TIMESTAMP = "timestamp";
+    private static final String KEY_TEAM_AUTH = "auth";
     private final List<GerritInstance> mInstanceList;
     private final List<String> mGerritNamesList;
     private final List<String> mGerritUrlsList;
+    private final List<String> mGerritAuthsList;
 
     private static final String OUR_DATA = "/data/com.jbirdvegas.mgerrit/gerrits";
     public static File mExternalCacheDir
@@ -51,6 +54,7 @@ public class GerritTeamsHelper {
         mInstanceList = getAllTeams();
         mGerritNamesList = getAllNames();
         mGerritUrlsList = getAllUrls();
+        mGerritAuthsList = getAllAuths();
     }
 
     private void ensureDirs() {
@@ -71,10 +75,25 @@ public class GerritTeamsHelper {
         return mGerritUrlsList;
     }
 
+    public List<String> getGerritAuthsList() {
+        return mGerritAuthsList;
+    }
+
+    public String getGerritAuthToken(String url) {
+        int index = mGerritUrlsList.indexOf(url);
+        if (index != -1) {
+            if (mGerritAuthsList.size() > index) {
+                return mGerritAuthsList.get(index);
+            }
+        }
+        return null;
+    }
+
     public class GerritInstance {
         private String mTeamName;
         private String mTeamUrl;
         private long mTimestamp;
+        private String mTeamAuth;
 
         GerritInstance(String teamName, String teamUrl, long timestamp) {
             mTeamName = teamName;
@@ -87,6 +106,11 @@ public class GerritTeamsHelper {
                 mTeamName = jsonObject.getString(KEY_TEAM_NAME);
                 mTeamUrl = jsonObject.getString(KEY_TEAM_URL);
                 mTimestamp = jsonObject.getLong(KEY_TIMESTAMP);
+                if (jsonObject.has(KEY_TEAM_AUTH)) {
+                    mTeamAuth = jsonObject.getString(KEY_TEAM_AUTH);
+                } else {
+                    mTeamAuth = null;
+                }
             } catch (JSONException e) {
                 throw new ExceptionInInitializerError("Failed to parse json into gerrit instance");
             }
@@ -104,12 +128,20 @@ public class GerritTeamsHelper {
         public long getTimestamp() {
             return mTimestamp;
         }
+
+        public String getTeamAuth() {
+            return mTeamAuth;
+        }
     }
     public static void saveTeam(String teamName, String teamUrl) {
-        writeTeamToCache(teamName, teamUrl);
+        writeTeamToCache(teamName, teamUrl, null);
     }
 
-    private static void writeTeamToCache(String teamName, String teamUrl) {
+    public static void saveTeam(String teamName, String teamUrl, String authBasic) {
+        writeTeamToCache(teamName, teamUrl, authBasic);
+    }
+
+    private static void writeTeamToCache(String teamName, String teamUrl, String authBasic) {
         File teamPath = new File(mExternalCacheDir.getAbsolutePath() + '/' + teamName);
         if (teamPath.exists()) {
             teamPath.delete();
@@ -118,11 +150,20 @@ public class GerritTeamsHelper {
         try {
             writer = new BufferedWriter(new FileWriter(teamPath));
             try {
-                writer.write(new JSONObject()
-                        .put(KEY_TEAM_NAME, teamName)
-                        .put(KEY_TEAM_URL, teamUrl)
-                        .put(KEY_TIMESTAMP, System.currentTimeMillis())
-                        .toString());
+                if (authBasic != null) {
+                    writer.write(new JSONObject()
+                            .put(KEY_TEAM_NAME, teamName)
+                            .put(KEY_TEAM_URL, teamUrl)
+                            .put(KEY_TIMESTAMP, System.currentTimeMillis())
+                            .put(KEY_TEAM_AUTH, authBasic)
+                            .toString());
+                } else {
+                    writer.write(new JSONObject()
+                            .put(KEY_TEAM_NAME, teamName)
+                            .put(KEY_TEAM_URL, teamUrl)
+                            .put(KEY_TIMESTAMP, System.currentTimeMillis())
+                            .toString());
+                }
             } catch (JSONException e) {
                 Log.e(TAG, "Failed to encode gerrit info to json", e);
             }
@@ -169,6 +210,14 @@ public class GerritTeamsHelper {
             urls.add(instance.getTeamUrl());
         }
         return urls;
+    }
+
+    private final List<String> getAllAuths() {
+        List<String> auths = new LinkedList<>();
+        for (GerritInstance instance : mInstanceList) {
+            auths.add(instance.getTeamAuth());
+        }
+        return auths;
     }
 
     private GerritInstance readFileToGerritInstance(File file) throws JSONException {

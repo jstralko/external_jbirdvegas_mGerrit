@@ -31,6 +31,7 @@ import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.widget.Toast;
 
+import com.jbirdvegas.mgerrit.helpers.GerritTeamsHelper;
 import com.jbirdvegas.mgerrit.objects.CommitterObject;
 
 import org.jetbrains.annotations.Contract;

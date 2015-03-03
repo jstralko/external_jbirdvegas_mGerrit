@@ -17,6 +17,9 @@ package com.jbirdvegas.mgerrit.tasks;
  *  limitations under the License.
  */
 
+import android.util.Base64;
+import android.util.Log;
+
 import com.android.volley.AuthFailureError;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.NetworkResponse;
@@ -28,8 +31,12 @@ import com.android.volley.Response.Listener;
 import com.android.volley.toolbox.HttpHeaderParser;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import com.jbirdvegas.mgerrit.Prefs;
+import com.jbirdvegas.mgerrit.helpers.GerritTeamsHelper;
 
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -80,6 +87,19 @@ public class GsonRequest<T> extends Request<T> {
             map.putAll(headers);
         // Always request non-pretty printed JSON responses.
         map.put("Accept", "application/json");
+
+        GerritTeamsHelper gth = new GerritTeamsHelper();
+        try {
+            URL url = new URL(getUrl());
+            String baseURL = String.format("%s://%s:%d/a/", url.getProtocol(), url.getHost(), url.getPort());
+            String auth = gth.getGerritAuthToken(baseURL);
+            if (auth != null) {
+                map.put("Authorization", String.format("Basic %s", auth));
+            }
+        } catch (MalformedURLException mue) {
+
+        }
+
         return map;
     }
 

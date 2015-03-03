@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 
+import com.android.volley.AuthFailureError;
 import com.android.volley.Cache;
 import com.android.volley.NetworkResponse;
 import com.android.volley.ParseError;
@@ -12,13 +13,17 @@ import com.android.volley.Response;
 import com.android.volley.VolleyLog;
 import com.android.volley.toolbox.HttpHeaderParser;
 import com.jbirdvegas.mgerrit.Prefs;
+import com.jbirdvegas.mgerrit.helpers.GerritTeamsHelper;
 import com.jbirdvegas.mgerrit.helpers.Tools;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.net.URLEncoder;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.ZipInputStream;
 
@@ -68,6 +73,25 @@ public class ZipImageRequest extends Request<Bitmap> {
         super(Method.GET, getBinaryDownloadUrl(context, changeNumber, patchSetNumber, path, wasDeleted),
                 errorListener);
         mListener = listener;
+    }
+
+    @Override
+    public Map<String, String> getHeaders() throws AuthFailureError {
+        // super.getHeaders() returns an empty AbstractMap<K, V> which
+        // throw UnsupportedOperation during calls to put(K, V)
+        HashMap<String, String> map = new HashMap<>(0);
+        GerritTeamsHelper gth = new GerritTeamsHelper();
+        try {
+            URL url = new URL(getUrl());
+            String baseURL = String.format("%s://%s:%d/a/", url.getProtocol(), url.getHost(), url.getPort());
+            String auth = gth.getGerritAuthToken(baseURL);
+            if (auth != null) {
+                map.put("Authorization", String.format("Basic %s", auth));
+            }
+        } catch (MalformedURLException mue) {
+
+        }
+        return map;
     }
 
     @Override

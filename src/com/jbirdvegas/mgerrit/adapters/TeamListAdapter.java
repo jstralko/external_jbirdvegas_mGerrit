@@ -25,6 +25,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.RadioButton;
@@ -38,15 +39,27 @@ import java.util.List;
 
 public class TeamListAdapter extends ArrayAdapter<GerritDetails> {
 
+    public interface TeamListAdapterCallback {
+        public void onSetUserPasswordClick();
+    }
+
+    private TeamListAdapterCallback mCallback;
     private LayoutInflater mInflator;
-    private String gerritName, gerritUrl = "https://";
+    private String gerritName, gerritUrl = "https://", gerritAuth;
 
     private List<GerritDetails> data;
 
-    public TeamListAdapter(Context context, List<GerritDetails> objects) {
+    public <T extends Context & TeamListAdapterCallback> TeamListAdapter(T context, List<GerritDetails> objects) {
         super(context, R.layout.gerrit_row, objects);
         mInflator = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         data = objects;
+        mCallback = context;
+    }
+
+    public void setGerritAuth(String auth) {
+        if (auth == null)
+            gerritAuth = "";
+        else gerritAuth = auth;
     }
 
     /**
@@ -65,7 +78,10 @@ public class TeamListAdapter extends ArrayAdapter<GerritDetails> {
             if (gerritUrl == null) {
                 gerritUrl = "";
             }
-            return new GerritDetails(gerritName, gerritUrl);
+            if (gerritAuth == null) {
+                gerritAuth = "";
+            }
+            return new GerritDetails(gerritName, gerritUrl, gerritAuth);
         }
         return data.get(position);
     }
@@ -105,8 +121,7 @@ public class TeamListAdapter extends ArrayAdapter<GerritDetails> {
     @Override
     public View getView(final int position, View convertView, ViewGroup parent) {
         ViewHolder viewHolder;
-        String gerritUrl;
-        GerritDetails rowData;
+        final GerritDetails rowData;
 
         // Row specific handling
         if (getItemViewType(position) == 0) {
@@ -130,8 +145,19 @@ public class TeamListAdapter extends ArrayAdapter<GerritDetails> {
             viewHolder.row.setChecked(lv.isItemChecked(position));
 
         } else {
+            final ListView lv = (ListView) parent;
+
             if (convertView == null) {
                 convertView = mInflator.inflate(R.layout.add_team_row, parent, false);
+                Button btn = (Button)convertView.findViewById(R.id.btn_set_username_password);
+                btn.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (!lv.isItemChecked(position))
+                            lv.setItemChecked(position, true);
+                        mCallback.onSetUserPasswordClick();
+                    }
+                });
             }
 
             viewHolder = (ViewHolder) convertView.getTag();
@@ -143,8 +169,6 @@ public class TeamListAdapter extends ArrayAdapter<GerritDetails> {
             }
 
             rowData = getItem(position);
-
-            final ListView lv = (ListView) parent;
             viewHolder.row.setChecked(lv.isItemChecked(position));
 
             /* Cannot set an onClick listener here, it will be ignored when the edit event
@@ -212,6 +236,7 @@ public class TeamListAdapter extends ArrayAdapter<GerritDetails> {
         EditText gerritEditName;
         EditText gerritEditUrl;
         RadioButton gerritChecked;
+
 
         private ViewHolder(CheckableView view) {
             row = view;

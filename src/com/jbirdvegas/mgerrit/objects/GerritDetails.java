@@ -22,10 +22,13 @@ package com.jbirdvegas.mgerrit.objects;
 public class GerritDetails implements Comparable<GerritDetails> {
     private final String gerritName;
     private final String gerritUrl;
+    private final String gerritAuth;
 
-    public GerritDetails(String gerritName, String gerritUrl) {
+    public GerritDetails(String gerritName, String gerritUrl, String gerritAuth) {
         this.gerritName = gerritName;
         this.gerritUrl = gerritUrl;
+        this.gerritAuth = gerritAuth;
+
     }
 
     public String getGerritName() {
@@ -34,6 +37,10 @@ public class GerritDetails implements Comparable<GerritDetails> {
 
     public String getGerritUrl() {
         return gerritUrl;
+    }
+
+    public String getGerritAuth() {
+        return gerritAuth;
     }
 
     @Override

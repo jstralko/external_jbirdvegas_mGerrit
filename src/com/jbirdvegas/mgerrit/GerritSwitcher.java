@@ -19,6 +19,7 @@ package com.jbirdvegas.mgerrit;
 
 import android.content.res.Resources;
 import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.NavUtils;
 import android.util.Log;
@@ -54,7 +55,7 @@ import java.util.Set;
  *   (android.app.DialogFragment) to be invoked from the Preferences
  *   as there is no PreferenceFragment class in the support library.
  */
-public class GerritSwitcher extends FragmentActivity {
+public class GerritSwitcher extends FragmentActivity implements TeamListAdapter.TeamListAdapterCallback, SetAuthDialog.AuthDialogListener {
 
     public static final String TAG = "GerritSwitcher";
 
@@ -134,15 +135,23 @@ public class GerritSwitcher extends FragmentActivity {
         final ArrayList<String> urls = new ArrayList<>();
         Collections.addAll(urls, res.getStringArray(R.array.gerrit_webaddresses));
 
+        int defaultMin = Math.min(teams.size(), urls.size());
+        final ArrayList<String> auths = new ArrayList<>();
+
         GerritTeamsHelper teamsHelper = new GerritTeamsHelper();
         teams.addAll(teamsHelper.getGerritNamesList());
         urls.addAll(teamsHelper.getGerritUrlsList());
+        auths.addAll(teamsHelper.getGerritAuthsList());
 
         Set<GerritDetails> gerrits = new HashSet<>();
 
         int min = Math.min(teams.size(), urls.size());
         for (int i = 0; i < min; i++) {
-            gerrits.add(new GerritDetails(teams.get(i), urls.get(i)));
+            if (i >= defaultMin) {
+                gerrits.add(new GerritDetails(teams.get(i), urls.get(i), auths.get(i - defaultMin)));
+            } else {
+                gerrits.add(new GerritDetails(teams.get(i), urls.get(i), null));
+            }
         }
         gerritData = new ArrayList<>(gerrits);
         Collections.sort(gerritData);
@@ -161,6 +170,7 @@ public class GerritSwitcher extends FragmentActivity {
         GerritDetails gerrit = mAdapter.getItem(mListView.getCheckedItemPosition());
         String gerritName = gerrit.getGerritName().trim();
         String gerritUrl = gerrit.getGerritUrl().trim();
+        String gerritAuth  = gerrit.getGerritAuth();
 
         if (gerritName == null || gerritName.length() < 1) {
             Toast.makeText(this, getString(R.string.invalid_gerrit_name), Toast.LENGTH_SHORT).show();
@@ -170,14 +180,28 @@ public class GerritSwitcher extends FragmentActivity {
             if ('/' != gerritUrl.charAt(gerritUrl.length() - 1)) {
                 gerritUrl += "/";
             }
+            // ensure auth urls have a/ append to the base url.
+            if (isAuthGerritInstance(gerritAuth)) {
+                if (!gerritUrl.endsWith("a/")) {
+                    gerritUrl += "a/";
+                }
+            }
+
             Log.v(TAG, "Saving url: " + gerritUrl);
-            GerritTeamsHelper.saveTeam(gerritName, gerritUrl);
+            GerritTeamsHelper.saveTeam(gerritName, gerritUrl, gerritAuth);
             Prefs.setCurrentGerrit(this, gerritUrl);
             return true;
         } else {
             Toast.makeText(this, getString(R.string.invalid_gerrit_url), Toast.LENGTH_SHORT).show();
             return false;
         }
+    }
+
+    private boolean isAuthGerritInstance(String auth) {
+        if (auth != null && auth.length() > 0) {
+            return true;
+        }
+        return false;
     }
 
     // Validator for URLs
@@ -216,5 +240,16 @@ public class GerritSwitcher extends FragmentActivity {
         gerritData.remove(position);
         mAdapter.notifyDataSetChanged();
         return success;
+    }
+
+    @Override
+    public void onSetUserPasswordClick() {
+        DialogFragment newFragment = new SetAuthDialog();
+        newFragment.show(getSupportFragmentManager(), "usernamePasswordFragment");
+    }
+
+    @Override
+    public void onDialogPositiveClick(DialogFragment dialog, String authToken) {
+        mAdapter.setGerritAuth(authToken);
     }
 }
